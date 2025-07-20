@@ -5,6 +5,7 @@ import com.villanova.courseplanner.Repository.CourseLeafRepository;
 import com.villanova.courseplanner.Repository.CourseRepository;
 import com.villanova.courseplanner.Repository.OperatorNodeRepository;
 import com.villanova.courseplanner.dto.CoursePrerequisiteDTO;
+import com.villanova.courseplanner.dto.PrerequisiteTreeNodeDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,10 @@ public class CourseService {
 
     public Map<String, Object> getPrerequisiteTree(String courseCode) {
         try {
-            List<Map<String, Object>> treeData = courseRepo.findPrerequisiteTreeStructure(courseCode);
+            List<PrerequisiteTreeNodeDTO> treeData = courseRepo.findPrerequisiteTreeStructure(courseCode);
+            for(PrerequisiteTreeNodeDTO test : treeData){
+                System.out.println(test.getChildIds() + ", " + test.getCourseCode());
+            }
             return buildPrerequisiteTree(treeData);
         } catch (Exception e) {
             // Fallback to simple structure
@@ -63,48 +67,60 @@ public class CourseService {
         }
     }
 
-    private Map<String, Object> buildPrerequisiteTree(List<Map<String, Object>> treeData) {
+    private Map<String, Object> buildPrerequisiteTree(List<PrerequisiteTreeNodeDTO> treeData) {
         Map<Long, Map<String, Object>> nodeMap = new HashMap<>();
-        Map<String, Object> root = null;
+        Set<Long> allNodeIds = new HashSet<>();
+        Set<Long> childNodeIds = new HashSet<>();
 
-        // Build node map
-        for (Map<String, Object> nodeData : treeData) {
-            Long nodeId = (Long) nodeData.get("nodeId");
+        // First pass: build node map and track IDs
+        for (PrerequisiteTreeNodeDTO nodeData : treeData) {
+            Long nodeId = nodeData.getNodeId();
+            allNodeIds.add(nodeId);
+
             Map<String, Object> node = new HashMap<>();
-            
-            String nodeLabel = (String) nodeData.get("nodeLabel");
+            String nodeLabel = nodeData.getNodeLabel();
+
             if ("OperatorNode".equals(nodeLabel)) {
-                node.put("type", nodeData.get("nodeType"));
+                node.put("type", nodeData.getNodeType());
                 node.put("children", new ArrayList<>());
             } else if ("CourseLeaf".equals(nodeLabel)) {
-                node.put("courseCode", nodeData.get("courseCode"));
+                node.put("courseCode", nodeData.getCourseCode());
             }
-            
+
             nodeMap.put(nodeId, node);
-            
-            // Assume first node is root (can be improved)
-            if (root == null) {
-                root = node;
+
+            List<Long> childIds = nodeData.getChildIds();
+            if (childIds != null) {
+                childNodeIds.addAll(childIds);
             }
         }
 
-        // Build relationships
-        for (Map<String, Object> nodeData : treeData) {
-            Long nodeId = (Long) nodeData.get("nodeId");
-            List<Long> childIds = (List<Long>) nodeData.get("childIds");
-            
+        // Identify the root node (never appears as a child)
+        allNodeIds.removeAll(childNodeIds);
+        if (allNodeIds.size() != 1) {
+            throw new IllegalStateException("Expected exactly one root node, found: " + allNodeIds.size());
+        }
+
+        Long rootId = allNodeIds.iterator().next();
+        Map<String, Object> root = nodeMap.get(rootId);
+
+        // Second pass: link parents to children
+        for (PrerequisiteTreeNodeDTO nodeData : treeData) {
+            Long nodeId = nodeData.getNodeId();
+            List<Long> childIds = nodeData.getChildIds();
+
             Map<String, Object> node = nodeMap.get(nodeId);
-            if (node.containsKey("children")) {
+            if (node.containsKey("children") && childIds != null) {
                 List<Map<String, Object>> children = (List<Map<String, Object>>) node.get("children");
                 for (Long childId : childIds) {
-                    if (nodeMap.containsKey(childId)) {
-                        children.add(nodeMap.get(childId));
-                    }
+                    children.add(nodeMap.get(childId));
                 }
             }
         }
 
         return root;
     }
+
+
 }
 
