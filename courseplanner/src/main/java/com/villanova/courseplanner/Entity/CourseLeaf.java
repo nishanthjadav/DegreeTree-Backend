@@ -1,18 +1,41 @@
 package com.villanova.courseplanner.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.springframework.data.neo4j.core.schema.GeneratedValue;
+import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
-@Node("CourseLeaf")
-public class CourseLeaf extends PrerequisiteLogic {
+import java.util.UUID;
 
-    @Relationship(type = "LINKS_TO", direction = Relationship.Direction.OUTGOING)
+@Node("CourseLeaf")
+public class CourseLeaf {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    @Relationship(type = "REFERS_TO")
     private Course course;
 
-    public CourseLeaf() {}
+    @JsonIgnore // Prevent circular reference in operator hierarchy
+    @Relationship(type = "CHILD", direction = Relationship.Direction.INCOMING)
+    private OperatorNode parentOperator;
 
-    public CourseLeaf(Course course) {
+    public CourseLeaf() {
+    }
+
+    public CourseLeaf(Long id, Course course, OperatorNode parentOperator) {
+        this.id = id;
         this.course = course;
+        this.parentOperator = parentOperator;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Course getCourse() {
@@ -22,5 +45,20 @@ public class CourseLeaf extends PrerequisiteLogic {
     public void setCourse(Course course) {
         this.course = course;
     }
-}
 
+    public OperatorNode getParentOperator() {
+        return parentOperator;
+    }
+
+    public void setParentOperator(OperatorNode parentOperator) {
+        this.parentOperator = parentOperator;
+    }
+
+    @Override
+    public String toString() {
+        return "CourseLeaf{" +
+                "id=" + id +
+                ", course=" + (course != null ? course.getCourseCode() : "null") +
+                '}';
+    }
+}

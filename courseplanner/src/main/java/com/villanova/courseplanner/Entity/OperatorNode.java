@@ -1,44 +1,78 @@
 package com.villanova.courseplanner.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.springframework.data.neo4j.core.schema.GeneratedValue;
+import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-@Node("Operator")
-public class OperatorNode extends PrerequisiteLogic {
+@Node("OperatorNode")
+public class OperatorNode {
+    @Id
+    @GeneratedValue
+    private Long id;
 
-    public enum OperatorType { AND, OR }
+    private String type; // "AND" or "OR"
 
-    private OperatorType type;
+    @Relationship(type = "CHILD")
+    private List<CourseLeaf> children;
 
-    @Relationship(type = "REQUIRES", direction = Relationship.Direction.OUTGOING)
-    private List<PrerequisiteLogic> children = new ArrayList<>();
+    @JsonIgnore // Prevent circular reference in operator hierarchy
+    @Relationship(type = "REQUIRES", direction = Relationship.Direction.INCOMING)
+    private OperatorNode parentOperator;
 
-    public OperatorNode() {}
-
-    public OperatorNode(OperatorType type) {
-        this.type = type;
+    public OperatorNode() {
     }
 
-    public OperatorType getType() {
+    public OperatorNode(Long id, String type, List<CourseLeaf> children, OperatorNode parentOperator) {
+        this.id = id;
+        this.type = type;
+        this.children = children;
+        this.parentOperator = parentOperator;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getType() {
         return type;
     }
 
-    public void setType(OperatorType type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    public List<PrerequisiteLogic> getChildren() {
+    public List<CourseLeaf> getChildren() {
         return children;
     }
 
-    public void setChildren(List<PrerequisiteLogic> children) {
+    public void setChildren(List<CourseLeaf> children) {
         this.children = children;
     }
 
-    public void addChild(PrerequisiteLogic child) {
-        this.children.add(child);
+    public OperatorNode getParentOperator() {
+        return parentOperator;
+    }
+
+    public void setParentOperator(OperatorNode parentOperator) {
+        this.parentOperator = parentOperator;
+    }
+
+    @Override
+    public String toString() {
+        return "OperatorNode{" +
+                "id=" + id +
+                ", type='" + type + '\'' +
+                ", children=" + (children != null ? children.size() : 0) + " items" +
+                '}';
     }
 }
