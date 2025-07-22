@@ -46,12 +46,9 @@ public class CourseService {
     public Map<String, Object> getPrerequisiteTree(String courseCode) {
         try {
             List<PrerequisiteTreeNodeDTO> treeData = courseRepo.findPrerequisiteTreeStructure(courseCode);
-            for(PrerequisiteTreeNodeDTO test : treeData){
-                System.out.println(test.getChildIds() + ", " + test.getCourseCode());
-            }
             return buildPrerequisiteTree(treeData);
         } catch (Exception e) {
-            // Fallback to simple structure
+            // Fallback to strict structure
             CoursePrerequisiteDTO dto = getCoursePrerequisites(courseCode);
             Map<String, Object> fallback = new HashMap<>();
             fallback.put("type", "AND");
